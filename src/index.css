@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Add to your existing CSS */
+@layer base {
+  /* Better dark mode text rendering */
+  .dark {
+    color-scheme: dark;
+  }
+  
+  /* Improve form controls in dark mode */
+  .dark input[type="text"],
+  .dark input[type="date"],
+  .dark input[type="time"],
+  .dark textarea,
+  .dark select {
+    background-color: theme('colors.gray.900');
+    border-color: theme('colors.gray.700');
+    color: theme('colors.gray.100');
+  }
+  
+  /* Better focus states in dark mode */
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    border-color: theme('colors.blue.500');
+    --tw-ring-color: theme('colors.blue.500');
+  }
+}
