@@ -9,7 +9,6 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
-    
   },
   "dependencies": {
     "date-fns": "^2.30.0",
@@ -33,3 +32,4 @@
     "vite": "^4.4.5"
   }
 }
+

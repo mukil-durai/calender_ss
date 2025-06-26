@@ -1,18 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { format, addDays, startOfWeek, addMonths, subMonths, 
-         getYear, getMonth, startOfMonth, endOfMonth, 
-         isToday, isSameMonth, addYears, subYears, getDate, 
-         isSameDay, parseISO, formatISO, addMinutes } from 'date-fns';
+import { 
+  format, addDays, startOfWeek, addMonths, subMonths, 
+  getYear, getMonth, startOfMonth, endOfMonth, 
+  isToday, isSameMonth, addYears, subYears, getDate, 
+  isSameDay, parseISO, formatISO, addMinutes,
+  getDaysInMonth
+} from 'date-fns';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import EventModal from './EventModal';
 import MiniCalendar from './MiniCalendar';
-import EventSearch from './EventSearch';
 import { categoriesData } from '../data/categories';
 import { useSwipeable } from 'react-swipeable'; // You'll need to install this package
 import { isHoliday, getHolidayDetails, isSunday, getHolidayInfo, getHolidayTypeColor, getHolidayClasses } from '../data/holidays';
 import YearDetailsModal from './YearDetailsModal'; // Import the new modal component
+import AllEventsModal from './AllEventsModal';
+import { CheckCircle, ListFilter } from 'lucide-react'; // Add ListFilter to imports
 
-const Calendar = () => {
+const Calendar = ({ searchQuery = '' }) => {
   // State management
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState('week');
@@ -25,26 +29,39 @@ const Calendar = () => {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [selectedSlot, setSelectedSlot] = useState(null);
-  const [searchQuery, setSearchQuery] = useState('');
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const [showSidebar, setShowSidebar] = useState(!isMobile);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [toast, setToast] = useState(null);
-  const [showYearDetailsModal, setShowYearDetailsModal] = useState(false); // State for year details modal
-  const calendarRef = useRef(null);
+  const [showYearDetailsModal, setShowYearDetailsModal] = useState(false);
+  const [showAllEventsModal, setShowAllEventsModal] = useState(false);
+  const yearDetailsButtonRef = useRef(null); // <-- Add this ref
+  const calendarRef = useRef(null); // <-- Add this line
 
   // Save events to localStorage when they change
   useEffect(() => {
     localStorage.setItem('calendarEvents', JSON.stringify(events));
-    // Only filter by search query, not by category
+    
+    // Improved search filtering
+    console.log("Events:", events);
+    console.log("Search query:", searchQuery);
+    
     if (searchQuery) {
       const filtered = events.filter(event => {
-        const matchesSearch = !searchQuery || 
-          event.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase()));
+        // Make search case-insensitive and more robust
+        const matchesSearch = 
+          (event.title && event.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (event.description && event.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+          (event.location && event.location.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        if (matchesSearch) {
+          console.log("Match found:", event.title);
+        }
+        
         return matchesSearch;
       });
+      console.log("Filtered events:", filtered);
       setFilteredEvents(filtered);
     } else {
       setFilteredEvents(events);
@@ -91,19 +108,17 @@ const Calendar = () => {
     return () => clearInterval(intervalId);
   }, [events]);
 
-  // Handle window resize
+  // Responsive: detect mobile on mount and on resize
   useEffect(() => {
     const handleResize = () => {
-      const newIsMobile = window.innerWidth < 768;
+      const newIsMobile = window.innerWidth < 640;
       setIsMobile(newIsMobile);
-      if (newIsMobile !== isMobile) {
-        setShowSidebar(!newIsMobile);
-      }
+      setShowSidebar(!newIsMobile);
     };
-    
+    handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [isMobile]);
+  }, []);
 
   // Real-time clock update
   useEffect(() => {
@@ -234,7 +249,7 @@ const Calendar = () => {
                               ref={provided.innerRef}
                               {...provided.draggableProps}
                               {...provided.dragHandleProps}
-                              className={`absolute top-0 left-0 right-0 min-h-16 bg-${event.color || 'blue'}-100 dark:bg-${event.color || 'blue'}-800/40 border-l-4 border-${event.color || 'blue'}-500 p-2 text-xs z-10 dark:text-white rounded-r-md shadow-sm`}
+                              className={`absolute top-0 left-0 right-0 min-h-16 bg-${event.color || 'blue'}-100 dark:bg-${event.color || 'blue'}-800/40 border-l-4 border-${event.color || 'blue'}-500 p-2 text-xs z-10 dark:text-white rounded-r-md shadow-sm calendar-event opacity-0 translate-y-2`}
                               onClick={(e) => handleEventClick(event, e)}
                             >
                               <div className="font-medium">{event.title}</div>
@@ -270,23 +285,23 @@ const Calendar = () => {
     );
   };
 
-  // Week View Component with improved time display
+  // Week View Component with improved time display and mobile responsiveness
   const WeekView = () => {
     const startDate = startOfWeek(currentDate, { weekStartsOn: 0 });
     const days = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
     const hours = Array.from({ length: 24 }, (_, i) => i); // Show all 24 hours
     
     return (
-      <div className="grid grid-cols-8 border-t border-l dark:border-gray-700 text-sm">
+      <div className="grid grid-cols-8 border-t border-l dark:border-gray-700 text-sm overflow-x-auto">
         {/* Headers */}
-        <div className="border-r border-b dark:border-gray-700 p-2 text-center font-semibold bg-gray-100 dark:bg-gray-800 dark:text-gray-200 sticky top-0 z-10">
+        <div className="border-r border-b dark:border-gray-700 p-1 sm:p-2 text-center font-semibold bg-gray-100 dark:bg-gray-800 dark:text-gray-200 sticky top-0 z-10 min-w-[50px] sm:min-w-[80px]">
           <div className="flex flex-col items-center">
-            <span className="text-xs">Time</span>
+            <span className="text-xs hidden xs:block">Time</span>
             <div className="flex items-center text-xs font-mono bg-blue-100 dark:bg-blue-900/30 px-1 py-0.5 rounded mt-1">
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 mr-1 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <span className="text-blue-800 dark:text-blue-200">{format(currentTime, 'HH:mm')}</span>
+              <span className="text-blue-800 dark:text-blue-200 text-2xs sm:text-xs">{format(currentTime, 'HH:mm')}</span>
             </div>
           </div>
         </div>
@@ -298,14 +313,14 @@ const Calendar = () => {
           
           return (
             <div key={i} className={`
-              border-r border-b dark:border-gray-700 p-2 text-center font-semibold sticky top-0 z-10
+              border-r border-b dark:border-gray-700 p-1 sm:p-2 text-center font-semibold sticky top-0 z-10 min-w-[70px] sm:min-w-[100px]
               ${isToday(day) ? 'bg-blue-100 dark:bg-blue-900 dark:text-blue-100' : 
                 dayIsSunday ? 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300' : 
                 dayIsHoliday ? `bg-${holidayColor}-50 dark:bg-${holidayColor}-900/30 text-${holidayColor}-700 dark:text-${holidayColor}-300` : 
                 'bg-gray-100 dark:bg-gray-800 dark:text-gray-200'}`}
             >
-              <div className="text-xs">{format(day, 'EEE')}</div>
-              <div className={`text-lg font-bold ${isToday(day) ? 'bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center mx-auto' : ''}`}>
+              <div className="text-2xs sm:text-xs">{format(day, 'EEE')}</div>
+              <div className={`text-base sm:text-lg font-bold ${isToday(day) ? 'bg-blue-500 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center mx-auto' : ''}`}>
                 {format(day, 'd')}
               </div>
               
@@ -327,7 +342,7 @@ const Calendar = () => {
             
             return (
               <React.Fragment key={hour}>
-                <div className={`border-r border-b p-2 text-center bg-gray-50 dark:bg-gray-800 dark:text-gray-300 ${isCurrentHour ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200' : ''}`}>
+                <div className={`border-r border-b p-1 sm:p-2 text-center bg-gray-50 dark:bg-gray-800 dark:text-gray-300 ${isCurrentHour ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-200' : ''}`}>
                   <div className="flex flex-col items-center">
                     <span className="text-sm font-bold">
                       {hour === 0 ? '12' : hour > 12 ? hour - 12 : hour}
@@ -362,7 +377,7 @@ const Calendar = () => {
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     {...provided.dragHandleProps}
-                                    className={`relative min-h-8 bg-${event.color || 'blue'}-100 border-l-4 border-${event.color || 'blue'}-500 p-1 text-xs z-10 rounded-r-sm shadow-sm mb-1`}
+                                    className={`relative min-h-8 bg-${event.color || 'blue'}-100 border-l-4 border-${event.color || 'blue'}-500 p-1 text-xs z-10 rounded-r-sm shadow-sm mb-1 calendar-event opacity-0 translate-y-2`}
                                     onClick={(e) => handleEventClick(event, e)}
                                   >
                                     <div className="font-medium truncate">{event.title}</div>
@@ -400,7 +415,7 @@ const Calendar = () => {
     );
   };
 
-  // Month View Component with enhanced holiday display
+  // Month View Component - improve responsiveness
   const MonthView = () => {
     const firstDayOfMonth = startOfMonth(currentDate);
     const lastDayOfMonth = endOfMonth(currentDate);
@@ -417,15 +432,15 @@ const Calendar = () => {
           {weekdays.map((day, i) => (
             <div key={i} className={`
               border-r border-b dark:border-gray-700 p-1 sm:p-2 text-center font-semibold font-montserrat
-              ${i === 0 ? 'bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/10 text-red-700 dark:text-red-300' : 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-800 dark:to-gray-700 dark:text-gray-200'}
+              ${i === 0 ? 'bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-900/10 text-red-700 dark:text-red-300' : 'bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 text-gray-800 dark:text-gray-200'}
             `}>
-              <span className="hidden xs:inline">{day}</span>
-              <span className="xs:hidden">{day[0]}</span>
+              <span className="hidden xxs:inline">{day}</span>
+              <span className="xxs:hidden">{day[0]}</span>
             </div>
           ))}
         </div>
         
-        {/* Calendar days */}
+        {/* Calendar days - improve cell height for mobile */}
         <div className="grid grid-cols-7">
           {days.map((day, i) => {
             const isCurrentMonth = isSameMonth(day, currentDate);
@@ -440,16 +455,16 @@ const Calendar = () => {
             return (
               <div 
                 key={i} 
-                className={`border-r border-b dark:border-gray-700 min-h-24 p-2 group
+                className={`border-r border-b dark:border-gray-700 mobile-calendar-cell min-h-16 sm:min-h-24 p-1 sm:p-2 group
                   ${isCurrentMonth ? 'bg-white dark:bg-gray-800' : 'bg-gray-50 dark:bg-gray-900 text-gray-400 dark:text-gray-500'} 
                   ${isToday(day) ? 'bg-blue-50 dark:bg-blue-900/20' : ''}
                   ${isHolidayDate && isCurrentMonth ? 'relative overflow-visible' : ''}
                   transition duration-150 hover:bg-gray-50 dark:hover:bg-gray-800/80`}
                 onClick={() => handleDateClick(day)}
               >
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex justify-between items-center mb-0.5 sm:mb-1">
                   <div className={`
-                    font-medium w-7 h-7 flex items-center justify-center rounded-full font-poppins
+                    font-medium w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center rounded-full font-poppins text-xs sm:text-sm
                     ${isToday(day) ? 'bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-sm' : 
                       dayIsSunday ? 'text-red-600 dark:text-red-400' : 
                       dayIsHoliday ? holidayClasses.text : 
@@ -459,10 +474,10 @@ const Calendar = () => {
                   </div>
                 </div>
                 
-                {/* Holiday name as highlighted banner */}
+                {/* Holiday name as highlighted banner - make it smaller on mobile */}
                 {isHolidayDate && isCurrentMonth && (
                   <div className={`
-                    relative text-xs font-medium py-2 px-3 mb-2 rounded-md overflow-visible
+                    relative text-2xs sm:text-xs font-medium py-1 sm:py-2 px-1.5 sm:px-3 mb-1 sm:mb-2 rounded-md overflow-visible
                     ${dayIsSunday ? 
                       'bg-red-100 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800' : 
                       dayIsHoliday && holidayInfo?.type === 'government' ? 
@@ -471,14 +486,14 @@ const Calendar = () => {
                     }
                     hover:shadow-md transition-shadow
                   `}>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">{dayIsSunday ? '🌞' : holidayInfo?.icon || '📅'}</span>
-                      <div className="flex-1">
-                        <span className="font-semibold whitespace-normal break-words leading-snug">
-                          {dayIsSunday ? 'Sunday Holiday' : holidayInfo?.name}
+                    <div className="flex items-center gap-1 sm:gap-2">
+                      <span className="text-sm sm:text-base">{dayIsSunday ? '🌞' : holidayInfo?.icon || '📅'}</span>
+                      <div className="flex-1 overflow-hidden">
+                        <span className="font-semibold whitespace-normal break-words leading-tight text-2xs sm:text-xs">
+                          {dayIsSunday ? 'Sunday' : holidayInfo?.name}
                         </span>
                         {!dayIsSunday && holidayInfo && (
-                          <div className="text-[10px] mt-0.5 opacity-75">
+                          <div className="text-[8px] sm:text-[10px] mt-0.5 opacity-75 hidden xs:block">
                             {holidayInfo.type}
                           </div>
                         )}
@@ -487,10 +502,11 @@ const Calendar = () => {
                   </div>
                 )}
                 
-                <div className="space-y-1">
-                  {isCurrentMonth && getEventsForDate(day).map((event, idx) => (
+                {/* Optimize events for mobile view */}
+                <div className="space-y-0.5 sm:space-y-1">
+                  {isCurrentMonth && getEventsForDate(day).slice(0, isMobile ? 1 : 3).map((event, idx) => (
                     <div key={idx} className="group/event relative">
-                      <div className={`text-xs p-1.5 bg-gradient-to-r from-${event.color}-50 to-${event.color}-100 
+                      <div className={`text-2xs sm:text-xs p-1 sm:p-1.5 bg-gradient-to-r from-${event.color}-50 to-${event.color}-100 
                         dark:from-${event.color}-900/40 dark:to-${event.color}-900/30 
                         text-${event.color}-800 dark:text-${event.color}-200 
                         rounded truncate font-poppins shadow-sm border-l-2 border-${event.color}-500 dark:border-${event.color}-400`}
@@ -523,6 +539,12 @@ const Calendar = () => {
                       </div>
                     </div>
                   ))}
+                  {/* Show "+X more" indicator if there are more events than we're showing */}
+                  {isCurrentMonth && getEventsForDate(day).length > (isMobile ? 1 : 3) && (
+                    <div className="text-2xs text-center text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/50 py-0.5 rounded">
+                      +{getEventsForDate(day).length - (isMobile ? 1 : 3)} more
+                    </div>
+                  )}
                 </div>
                 
                 {/* Event & Holiday Indicators - removed Sunday dot */}
@@ -862,7 +884,7 @@ const Calendar = () => {
       navigator.share({
         title: 'My Calendar',
         text: 'Check out my calendar',
-        url: window.location.href,
+        url: 'https://calender-ss-nine.vercel.app/',
       });
     } else {
       // Fallback
@@ -882,7 +904,11 @@ const Calendar = () => {
   const getYearDetails = () => {
     const year = getYear(currentDate);
     const isLeapYear = new Date(year, 1, 29).getDate() === 29;
-    const holidays = events.filter(event => isHoliday(parseISO(event.date)));
+    const holidays = events.filter(event => isHoliday(parseISO(event.date)) && getYear(parseISO(event.date)) === year);
+    const govtHolidays = holidays.filter(event => {
+      const h = getHolidayDetails(parseISO(event.date));
+      return h && h.type === 'government';
+    });
     const sundays = Array.from({ length: 12 }, (_, month) => {
       const firstDay = new Date(year, month, 1);
       return Array.from({ length: getDaysInMonth(firstDay) }, (_, day) => {
@@ -890,19 +916,72 @@ const Calendar = () => {
         return isSunday(date) ? date : null;
       }).filter(Boolean);
     }).flat();
-
-    return { year, isLeapYear, holidays, sundays, events };
+    const weeks = Array.from({ length: 53 }, (_, i) => i + 1).filter(w => {
+      // Check if week exists in this year
+      const d = new Date(year, 0, 1 + (w - 1) * 7);
+      return d.getFullYear() === year;
+    });
+    const jan1 = new Date(year, 0, 1);
+    const dec31 = new Date(year, 11, 31);
+    return {
+      year,
+      isLeapYear,
+      holidays,
+      govtHolidays,
+      sundays,
+      weeks: weeks.length,
+      startDay: format(jan1, 'EEEE, MMMM d'),
+      endDay: format(dec31, 'EEEE, MMMM d'),
+      allGovtHolidays: govtHolidays.map(e => ({
+        date: format(parseISO(e.date), 'MMM d, yyyy'),
+        name: getHolidayDetails(parseISO(e.date))?.name || '',
+      })),
+    };
   };
+
+  // Add this to the existing useEffect section after the events useState
+  useEffect(() => {
+    // Apply smooth scroll to calendar view changes
+    const applyScrollEffects = () => {
+      // Get all event elements that should animate in
+      const eventElements = document.querySelectorAll('.calendar-event');
+      
+      eventElements.forEach((element, index) => {
+        // Add a small delay based on index for cascade effect
+        setTimeout(() => {
+          element.classList.add('event-visible');
+        }, index * 50);
+      });
+    };
+    
+    // Apply effects when view or date changes
+    applyScrollEffects();
+    
+    // Scroll to current time in day and week views
+    if (view === 'day' || view === 'week') {
+      const now = new Date();
+      const currentHour = now.getHours();
+      
+      // Calculate position to scroll to (current hour minus 2 to show context)
+      const scrollHour = Math.max(0, currentHour - 2);
+      const hourHeight = 64; // Approximate height of an hour block
+      
+      // Scroll the calendar view
+      if (calendarRef.current) {
+        calendarRef.current.scrollTop = scrollHour * hourHeight;
+      }
+    }
+  }, [view, currentDate]);
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-gray-50 dark:bg-gray-900">
       {/* Toast notification */}
       {toast && (
-        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow-lg z-50">
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-4 py-2 rounded shadow-lg z-50 text-xs sm:text-sm">
           {toast}
         </div>
       )}
-      {/* Mobile sidebar toggle - improved */}
+      {/* Mobile sidebar toggle */}
       {isMobile && !showSidebar && (
         <button 
           onClick={() => setShowSidebar(true)}
@@ -915,12 +994,13 @@ const Calendar = () => {
         </button>
       )}
       
-      {/* Sidebar (conditionally shown on mobile) */}
+      {/* Sidebar (fullscreen on mobile) */}
       {showSidebar && (
-        <div className="bg-white dark:bg-gray-800 border-r dark:border-gray-700 w-full md:w-64 p-4 flex flex-col space-y-4 md:h-screen overflow-auto">
+        <div className={`fixed inset-0 z-40 md:static md:z-auto bg-white dark:bg-gray-800 border-r dark:border-gray-700 w-full md:w-64 flex flex-col h-screen overflow-hidden transition-all duration-200 ${isMobile ? 'max-w-full' : ''}`}>
           {/* Mobile close button */}
           {isMobile && (
-            <div className="flex justify-end -mt-2">
+            <div className="sticky top-0 z-10 flex justify-between items-center p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+              <h2 className="font-bold text-lg">Calendar Menu</h2>
               <button 
                 onClick={() => setShowSidebar(false)}
                 className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -933,151 +1013,133 @@ const Calendar = () => {
             </div>
           )}
           
-          {/* Mini Calendar */}
-          <MiniCalendar 
-            currentDate={currentDate}
-            onDateChange={setCurrentDate}
-            events={events}
-          />
-          
-          {/* Search */}
-          <EventSearch 
-            onSearch={setSearchQuery}
-            events={events}
-          />
-          
-          {/* Upcoming Events */}
-          <div>
-            <h3 className="font-bold text-lg mb-2 dark:text-gray-100">Upcoming Events</h3>
-            <div className="space-y-2 max-h-60 overflow-y-auto">
-              {filteredEvents
-                .filter(event => new Date(event.date) >= new Date())
-                .sort((a, b) => new Date(a.date) - new Date(b.date))
-                .slice(0, 5)
-                .map(event => (
-                  <div 
-                    key={event.id} 
-                    className={`p-2 rounded bg-${event.color || 'blue'}-100 dark:bg-${event.color || 'blue'}-900/50 dark:text-white cursor-pointer`}
-                    onClick={() => {
-                      setSelectedEvent(event);
-                      setSelectedDate(new Date(event.date));
-                      setShowEventModal(true);
-                    }}
-                  >
-                    <div className="font-medium">{event.title}</div>
-                    <div className="text-xs">{format(new Date(event.date), 'MMM d')} • {event.startTime}</div>
-                  </div>
-                ))}
+          {/* Sidebar content */}
+          <div className="flex-1 overflow-y-auto p-2 sm:p-4 space-y-4">
+            <MiniCalendar 
+              currentDate={currentDate}
+              onDateChange={setCurrentDate}
+              events={events}
+            />
+            <div>
+              <h3 className="font-bold text-lg mb-2 dark:text-gray-100">Tools</h3>
+              <div className="space-y-2">
+                <button 
+                  onClick={exportCalendar}
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-left text-xs sm:text-sm"
+                >
+                  Export Calendar
+                </button>
+                <button 
+                  onClick={shareCalendar}
+                  className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-left text-xs sm:text-sm"
+                >
+                  Share Calendar
+                </button>
+              </div>
             </div>
           </div>
-          
-          {/* Tools */}
-          <div>
-            <h3 className="font-bold text-lg mb-2 dark:text-gray-100">Tools</h3>
-            <div className="space-y-2">
-              <button 
-                onClick={exportCalendar}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-left"
-              >
-                Export Calendar
-              </button>
-              <button 
-                onClick={shareCalendar}
-                className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded text-left"
-              >
-                Share Calendar
-              </button>
-            </div>
-          </div>
+          {isMobile && <div className="h-6 safe-area-inset-bottom"></div>}
         </div>
       )}
       
       {/* Main Calendar Area */}
       <div className="flex-1 overflow-hidden flex flex-col h-screen">
-        {/* Header with enhanced time display */}
-        <div className="p-2 sm:p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800 flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
-          <div className="flex items-center space-x-2">
-            <button onClick={prevPeriod} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
-            <div className="flex flex-col items-center">
-              <h2 className="text-lg sm:text-xl font-bold flex items-center gap-3">
-                {getHeaderText()}
-                {/* Default temperature display with icon */}
-                <span className="ml-2 px-2 py-0.5 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-200 text-xs font-medium flex items-center gap-1">
-                  {/* Weather/temperature icon */}
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-0.5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                    <path d="M10 3a1 1 0 011 1v1a1 1 0 11-2 0V4a1 1 0 011-1zm5.657 2.343a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 10a1 1 0 110 2h-1a1 1 0 110-2h1zm-2.343 5.657a1 1 0 01-1.414 0l-.707-.707a1 1 0 111.414-1.414l.707.707a1 1 0 010 1.414zM10 17a1 1 0 01-1-1v-1a1 1 0 112 0v1a1 1 0 01-1 1zm-5.657-2.343a1 1 0 010-1.414l.707-.707a1 1 0 111.414 1.414l-.707.707a1 1 0 01-1.414 0zM3 10a1 1 0 110-2h1a1 1 0 110 2H3zm2.343-5.657a1 1 0 011.414 0l.707.707A1 1 0 015.05 6.464l-.707-.707a1 1 0 010-1.414z" />
-                    <circle cx="10" cy="10" r="3" />
+        {/* Header */}
+        <div className="py-2 px-2 sm:p-4 border-b dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex items-center space-x-1">
+                <button onClick={prevPeriod} className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
-                  Temp: 25°C
-                </span>
+                </button>
+                <button onClick={nextPeriod} className="p-1.5 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+              <h2 className="text-base sm:text-xl font-bold text-gray-900 dark:text-gray-100">
+                {getHeaderText()}
               </h2>
-              {/* Real-time clock display */}
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-400 font-mono">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span>{format(currentTime, 'EEEE, MMMM d, yyyy • HH:mm:ss')}</span>
+              <button
+                ref={yearDetailsButtonRef}
+                className="p-1.5 rounded-full bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-800 transition-colors text-green-700 dark:text-green-300"
+                title="Show Year Details"
+                onClick={() => setShowYearDetailsModal(true)}
+              >
+                <CheckCircle size={isMobile ? 16 : 18} />
+              </button>
+            </div>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowAllEventsModal(true)} 
+                className="bg-purple-600 text-white px-3 py-1.5 text-xs sm:text-sm rounded-md hover:bg-purple-700 transition flex items-center"
+                title="View all events"
+              >
+                <ListFilter className="h-4 w-4 mr-1" />
+                <span className="hidden sm:inline">All Events</span>
+              </button>
+              <button 
+                onClick={goToToday} 
+                className="bg-blue-600 text-white px-3 py-1.5 text-xs sm:text-sm rounded-md hover:bg-blue-700 transition flex items-center"
+              >
+                Today
+              </button>
+              <div className="border rounded-md overflow-hidden flex dark:border-gray-700">
+                <button 
+                  onClick={() => setView('day')} 
+                  className={`text-xs px-3 py-1.5 ${view === 'day' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  Day
+                </button>
+                <button 
+                  onClick={() => setView('week')} 
+                  className={`text-xs px-3 py-1.5 border-l dark:border-gray-700 ${view === 'week' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  Week
+                </button>
+                <button 
+                  onClick={() => setView('month')} 
+                  className={`text-xs px-3 py-1.5 border-l dark:border-gray-700 ${view === 'month' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  Month
+                </button>
+                <button 
+                  onClick={() => setView('year')} 
+                  className={`text-xs px-3 py-1.5 border-l dark:border-gray-700 ${view === 'year' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300'}`}
+                >
+                  Year
+                </button>
               </div>
             </div>
-            <button onClick={nextPeriod} className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" />
-              </svg>
-            </button>
           </div>
-          <div className="flex items-center space-x-2 w-full sm:w-auto">
-            <button 
-              onClick={goToToday} 
-              className="bg-blue-600 text-white px-3 py-1 text-sm rounded hover:bg-blue-700 transition flex-1 sm:flex-none sm:px-4 flex items-center justify-center"
-            >
-              <span className="hidden xs:inline">Today</span>
-              <span className="xs:hidden">📅</span>
-            </button>
-            <div className="border rounded-md overflow-hidden flex dark:border-gray-700 flex-1 sm:flex-none">
-              {/* Mobile-friendly view buttons */}
-              <button 
-                onClick={() => setView('day')} 
-                className={`text-xs sm:text-sm px-2 sm:px-3 py-1 ${view === 'day' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Day"
-              >
-                <span className="hidden sm:inline">Day</span>
-                <span className="sm:hidden">D</span>
-              </button>
-              <button 
-                onClick={() => setView('week')} 
-                className={`text-xs sm:text-sm px-2 sm:px-3 py-1 border-l dark:border-gray-700 ${view === 'week' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Week"
-              >
-                <span className="hidden sm:inline">Week</span>
-                <span className="sm:hidden">W</span>
-              </button>
-              <button 
-                onClick={() => setView('month')} 
-                className={`text-xs sm:text-sm px-2 sm:px-3 py-1 border-l dark:border-gray-700 ${view === 'month' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Month" 
-              >
-                <span className="hidden sm:inline">Month</span>
-                <span className="sm:hidden">M</span>
-              </button>
-              <button 
-                onClick={() => setView('year')} 
-                className={`text-xs sm:text-sm px-2 sm:px-3 py-1 border-l dark:border-gray-700 ${view === 'year' ? 'bg-blue-100 dark:bg-blue-900 text-blue-600 dark:text-blue-300' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
-                title="Year"
-              >
-                <span className="hidden sm:inline">Year</span>
-                <span className="sm:hidden">Y</span>
-              </button>
+          {/* Bottom row: Current date and time display */}
+          <div className="flex flex-col sm:flex-row items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-2 gap-1">
+            <div className="flex items-center gap-1">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <div className="flex flex-col">
+                <span className="font-medium">Today: {format(new Date(), 'EEEE, MMMM d, yyyy')}</span>
+                <span className="text-2xs opacity-75">Selected: {format(currentDate, 'MMMM d, yyyy')}</span>
+              </div>
+            </div>
+            <div className="flex items-center mt-1 sm:mt-0">
+              <div className="bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-md flex items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-blue-700 dark:text-blue-300 font-mono">{format(currentTime, 'HH:mm:ss')}</span>
+              </div>
             </div>
           </div>
         </div>
-        
-        {/* Calendar View with swipe support */}
+
+        {/* Calendar View */}
         <div 
-          className="flex-1 overflow-auto p-1 sm:p-4 bg-gray-50 dark:bg-gray-900" 
+          className="flex-1 overflow-auto mobile-padding bg-gray-50 dark:bg-gray-900 scroll-smooth"
           ref={calendarRef}
           {...swipeHandlers}
         >
@@ -1087,12 +1149,12 @@ const Calendar = () => {
           {view === 'year' && <YearView />}
         </div>
         
-        {/* Floating Action Button - Add Event */}
+        {/* Floating Action Button */}
         <button 
           onClick={() => handleDateClick(currentDate)}
-          className="fixed bottom-4 right-4 w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors"
+          className="fixed bottom-4 right-4 w-12 h-12 rounded-full bg-blue-600 text-white shadow-lg flex items-center justify-center hover:bg-blue-700 transition-colors z-20 safe-area-inset-bottom text-xl"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 sm:h-8 sm:w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
           </svg>
         </button>
@@ -1117,6 +1179,28 @@ const Calendar = () => {
         <YearDetailsModal
           yearDetails={getYearDetails()}
           onClose={() => setShowYearDetailsModal(false)}
+          anchorRef={yearDetailsButtonRef}
+        />
+      )}
+
+      {/* All Events Modal */}
+      {showAllEventsModal && (
+        <AllEventsModal
+          events={events}
+          onClose={() => setShowAllEventsModal(false)}
+          onEdit={(event) => {
+            setSelectedEvent(event);
+            setSelectedDate(new Date(event.date));
+            setShowEventModal(true);
+            setShowAllEventsModal(false);
+          }}
+          onDelete={handleDeleteEvent}
+          onAdd={() => {
+            setSelectedDate(new Date());
+            setSelectedEvent(null);
+            setShowEventModal(true);
+            setShowAllEventsModal(false);
+          }}
         />
       )}
     </div>

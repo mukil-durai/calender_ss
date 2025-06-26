@@ -28,3 +28,108 @@
     --tw-ring-color: theme('colors.blue.500');
   }
 }
+
+/* Responsive utilities */
+@media (max-width: 640px) {
+  .text-2xs {
+    font-size: 0.65rem;
+    line-height: 0.85rem;
+  }
+  
+  .mobile-padding {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  .mobile-calendar-cell {
+    min-height: 3.5rem;
+  }
+}
+
+/* Animation delay utilities for splash screen */
+.animation-delay-200 {
+  animation-delay: 0.2s;
+}
+
+.animation-delay-300 {
+  animation-delay: 0.3s;
+}
+
+.animation-delay-400 {
+  animation-delay: 0.4s;
+}
+
+/* Safe area insets for mobile devices */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+}
+
+/* Add Kerala-specific themed classes */
+.text-2xs {
+  font-size: 0.65rem;
+  line-height: 0.85rem;
+}
+
+/* Smooth scrolling for the entire app */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Animation for table rows in AllEventsModal */
+.event-table-row {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.event-row-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Scroll animations for various components */
+.scroll-smooth {
+  scroll-behavior: smooth;
+}
+
+/* Animation utilities */
+.animate-delay-0 {
+  animation-delay: 0ms;
+}
+
+.animate-delay-100 {
+  animation-delay: 100ms;
+}

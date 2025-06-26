@@ -272,36 +272,39 @@ const EventModal = ({
   ];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start sm:items-center justify-center z-50 p-0 sm:p-4 overflow-auto transition-opacity duration-300">
-      <div 
-        className={`bg-white dark:bg-gray-800 rounded-t-lg sm:rounded-lg shadow-xl w-full max-w-md max-h-[90vh] sm:max-h-[85vh] overflow-hidden mt-8 sm:mt-0 transform transition-transform duration-300 ${
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-0 overflow-y-auto transition-opacity duration-300">
+      <div
+        className={`bg-white dark:bg-gray-800 rounded-t-lg sm:rounded-lg shadow-xl w-full sm:max-w-md max-h-[98vh] sm:max-h-[85vh] flex flex-col mt-8 sm:mt-0 transform transition-transform duration-300 ${
           isClosing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'
         }`}
+        style={{ maxWidth: '95vw' }}
       >
-        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 px-4 sm:px-6 py-3 sm:py-4 border-b dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg sm:text-xl font-bold dark:text-gray-100">
+        {/* Sticky Header */}
+        <div className="sticky top-0 z-30 bg-white dark:bg-gray-800 px-3 sm:px-6 py-3 border-b dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-base sm:text-xl font-bold dark:text-gray-100">
             {event ? 'Edit Event' : 'New Event'}
           </h2>
-          <button 
+          <button
             onClick={handleClose}
             className="text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-white p-1"
             aria-label="Close"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        <form 
+        {/* Scrollable Form Body */}
+        <form
           ref={formRef}
-          onSubmit={handleSubmit} 
+          onSubmit={handleSubmit}
           onChange={handleFormChange}
-          className="overflow-y-auto p-4 sm:p-6 space-y-4"
-          style={{ maxHeight: 'calc(90vh - 60px)' }}
+          className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-4"
+          style={{ minHeight: 0 }}
         >
           <div>
-            <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+            <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-2">
               {date ? format(date, 'EEEE, MMMM d, yyyy') : ''}
             </div>
             
@@ -640,13 +643,14 @@ const EventModal = ({
             )}
           </div>
 
-          <div className="flex justify-between pt-4 border-t dark:border-gray-700">
+          {/* Sticky Footer */}
+          <div className="sticky bottom-0 z-20 bg-white dark:bg-gray-800 px-3 sm:px-6 pt-4 pb-3 border-t dark:border-gray-700 flex justify-between safe-area-inset-bottom">
             {event ? (
               <button
                 type="button"
                 onClick={handleDelete}
                 className={`px-3 sm:px-4 py-2.5 rounded-md ${
-                  showDeleteConfirm 
+                  showDeleteConfirm
                     ? 'bg-red-600 text-white hover:bg-red-700'
                     : 'border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
                 }`}
@@ -675,7 +679,7 @@ const EventModal = ({
           </div>
         </form>
       </div>
-    </div>
+    </div>  
   );
 };
 
