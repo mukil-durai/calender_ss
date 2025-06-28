@@ -117,6 +117,16 @@ const AllEventsModal = ({ events, onClose, onEdit, onDelete, onAdd }) => {
     }
   }, [filteredEvents]);
 
+  // Helper to check if event is static (from events.json)
+  const isStaticEvent = (event) => {
+    // Static events have id as string and match events.json ids (1,2,3,...)
+    // You may refine this logic if needed
+    return (
+      typeof event.id === 'string' &&
+      /^[0-9]+$/.test(event.id)
+    );
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div 
@@ -200,122 +210,127 @@ const AllEventsModal = ({ events, onClose, onEdit, onDelete, onAdd }) => {
         </div>
 
         {/* Events List */}
-        <div className="flex-1 overflow-y-auto events-container scroll-smooth">
-          {filteredEvents.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
-              <Filter className="h-12 w-12 mb-2" />
-              <p className="text-lg">No events found</p>
-              <p className="text-sm">Try adjusting your search or filters</p>
-            </div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => toggleSort('title')}
-                  >
-                    <div className="flex items-center">
-                      Title
-                      {sortField === 'title' && (
-                        <span className="ml-1">
-                          {sortDirection === 'asc' ? '▲' : '▼'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => toggleSort('date')}
-                  >
-                    <div className="flex items-center">
-                      Date & Time
-                      {sortField === 'date' && (
-                        <span className="ml-1">
-                          {sortDirection === 'asc' ? '▲' : '▼'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
-                    onClick={() => toggleSort('color')}
-                  >
-                    <div className="flex items-center">
-                      Color
-                      {sortField === 'color' && (
-                        <span className="ml-1">
-                          {sortDirection === 'asc' ? '▲' : '▼'}
-                        </span>
-                      )}
-                    </div>
-                  </th>
-                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {filteredEvents.map((event, index) => (
-                  <tr 
-                    key={event.id} 
-                    className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 event-table-row opacity-0 translate-y-4
-                      ${index % 2 === 0 ? 'animate-delay-0' : 'animate-delay-100'}`}
-                    style={{ animationDelay: `${index * 50}ms` }}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className={`flex-shrink-0 h-8 w-1 bg-${event.color || 'blue'}-500 rounded-full mr-3`}></div>
-                        <div className="flex flex-col">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white">{event.title}</div>
-                          {event.location && (
-                            <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
-                              <span className="mr-1">📍</span> {event.location}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900 dark:text-white">
-                        {format(parseISO(event.date), 'MMM d, yyyy')}
-                      </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
-                        <Clock className="h-3 w-3 mr-1" /> 
-                        {event.startTime} - {event.endTime}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-${event.color || 'blue'}-100 text-${event.color || 'blue'}-800 dark:bg-${event.color || 'blue'}-900/30 dark:text-${event.color || 'blue'}-200`}>
-                        {event.color || 'blue'}
+        <div className="flex-1 overflow-y-auto events-container scroll-smooth relative">
+          {/* Sticky table header with higher z-index and background */}
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead className="bg-gray-50 dark:bg-gray-800 sticky top-0 z-30" style={{ zIndex: 30 }}>
+              <tr>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-800"
+                  onClick={() => toggleSort('title')}
+                  style={{ zIndex: 30, position: 'sticky', top: 0, background: 'inherit' }}
+                >
+                  <div className="flex items-center">
+                    Title
+                    {sortField === 'title' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? '▲' : '▼'}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => onEdit(event)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
-                      >
-                        <Edit className="h-4 w-4" />
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
-                            onDelete(event.id);
-                          }
-                        }}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                      >
-                        <Trash className="h-4 w-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-800"
+                  onClick={() => toggleSort('date')}
+                  style={{ zIndex: 30, position: 'sticky', top: 0, background: 'inherit' }}
+                >
+                  <div className="flex items-center">
+                    Date & Time
+                    {sortField === 'date' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 bg-gray-50 dark:bg-gray-800"
+                  onClick={() => toggleSort('color')}
+                  style={{ zIndex: 30, position: 'sticky', top: 0, background: 'inherit' }}
+                >
+                  <div className="flex items-center">
+                    Color
+                    {sortField === 'color' && (
+                      <span className="ml-1">
+                        {sortDirection === 'asc' ? '▲' : '▼'}
+                      </span>
+                    )}
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider bg-gray-50 dark:bg-gray-800"
+                  style={{ zIndex: 30, position: 'sticky', top: 0, background: 'inherit' }}
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredEvents.map((event, index) => (
+                <tr 
+                  key={event.id} 
+                  className={`hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-300 event-table-row opacity-0 translate-y-4
+                    ${index % 2 === 0 ? 'animate-delay-0' : 'animate-delay-100'}`}
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center">
+                      <div className={`flex-shrink-0 h-8 w-1 bg-${event.color || 'blue'}-500 rounded-full mr-3`}></div>
+                      <div className="flex flex-col">
+                        <div className="text-sm font-medium text-gray-900 dark:text-white">{event.title}</div>
+                        {event.location && (
+                          <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                            <span className="mr-1">📍</span> {event.location}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 dark:text-white">
+                      {format(parseISO(event.date), 'MMM d, yyyy')}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center mt-1">
+                      <Clock className="h-3 w-3 mr-1" /> 
+                      {event.startTime} - {event.endTime}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-${event.color || 'blue'}-100 text-${event.color || 'blue'}-800 dark:bg-${event.color || 'blue'}-900/30 dark:text-${event.color || 'blue'}-200`}>
+                      {event.color || 'blue'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <button
+                      onClick={() => onEdit(event)}
+                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 mr-3"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (isStaticEvent(event)) {
+                          alert("This is a static event. You can't delete it here. If you wish to delete it, please remove it from your events.json file.");
+                          return;
+                        }
+                        if (window.confirm(`Are you sure you want to delete "${event.title}"?`)) {
+                          onDelete(event.id);
+                        }
+                      }}
+                      className={`text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 ${isStaticEvent(event) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={isStaticEvent(event)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
         {/* Footer */}

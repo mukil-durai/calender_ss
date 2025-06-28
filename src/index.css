@@ -32,17 +32,16 @@
 /* Responsive utilities */
 @media (max-width: 640px) {
   .text-2xs {
-    font-size: 0.65rem;
-    line-height: 0.85rem;
+    font-size: 0.625rem; /* 10px */
+    line-height: 0.75rem; /* 12px */
   }
   
   .mobile-padding {
-    padding-left: 0.5rem;
-    padding-right: 0.5rem;
+    padding: 0;
   }
   
   .mobile-calendar-cell {
-    min-height: 3.5rem;
+    min-height: 3.5rem; /* 56px */
   }
 }
 
@@ -61,13 +60,13 @@
 
 /* Safe area insets for mobile devices */
 .safe-area-inset-bottom {
-  padding-bottom: env(safe-area-inset-bottom, 0.5rem);
+  padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
 /* Add Kerala-specific themed classes */
 .text-2xs {
-  font-size: 0.65rem;
-  line-height: 0.85rem;
+  font-size: 0.625rem; /* 10px */
+  line-height: 0.75rem; /* 12px */
 }
 
 /* Smooth scrolling for the entire app */
@@ -79,10 +78,21 @@ html {
 .event-table-row {
   opacity: 0;
   transform: translateY(10px);
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .event-row-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.calendar-event {
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.event-visible {
   opacity: 1;
   transform: translateY(0);
 }
@@ -132,4 +142,36 @@ html {
 
 .animate-delay-100 {
   animation-delay: 100ms;
+}
+
+@keyframes pulse-slow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.animate-pulse-slow {
+  animation: pulse-slow 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-dim {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.4; }
+}
+.animate-pulse-dim {
+  animation: pulse-dim 3.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse-strong {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 87, 34, 0.3);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+    box-shadow: 0 0 8px 4px rgba(255, 193, 7, 0.25);
+  }
+}
+.animate-pulse-strong {
+  animation: pulse-strong 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }

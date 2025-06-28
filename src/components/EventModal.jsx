@@ -6,11 +6,11 @@ const EventModal = ({
   event, 
   timeSlot,
   onClose, 
-  
   onSave, 
   onDelete,
   categories,
-  existingEvents = [] 
+  existingEvents = [],
+  requireDate = false // <-- new prop
 }) => {
   // Form state
   const [title, setTitle] = useState('');
@@ -31,7 +31,8 @@ const EventModal = ({
   const [priority, setPriority] = useState('medium');
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [colorPalette, setColorPalette] = useState(false);
-  
+  const [selectedDate, setSelectedDate] = useState(date || '');
+
   // References
   const titleRef = useRef(null);
   const formRef = useRef(null);
@@ -171,7 +172,12 @@ const EventModal = ({
     }
 
     // Prevent adding events that end in the past
-    const eventDateStr = format(date, 'yyyy-MM-dd');
+    const eventDateObj = requireDate || !date ? selectedDate : date;
+    if (!eventDateObj) {
+      setErrors({ ...errors, date: 'Date is required' });
+      return;
+    }
+    const eventDateStr = typeof eventDateObj === 'string' ? eventDateObj : format(eventDateObj, 'yyyy-MM-dd');
     const now = new Date();
     const eventEnd = new Date(`${eventDateStr}T${endTime}`);
     if (!event || !event.id) { // Only for new events, not editing
@@ -196,7 +202,7 @@ const EventModal = ({
     onSave({
       title,
       description,
-      date: format(date, 'yyyy-MM-dd'),
+      date: eventDateStr,
       startTime,
       endTime,
       category,

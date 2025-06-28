@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { format, isAfter, isBefore, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { Search, Calendar, Clock, Filter, Edit2, Trash2 } from 'lucide-react';
 
-const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
+const EventSearch = ({ onSearch, events = [], onEdit, onDelete, onNavigateDate }) => {
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
   const [recentSearches, setRecentSearches] = useState(() => {
@@ -57,20 +57,48 @@ const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
     };
   }, [searchTerm, dateFilter, events]);
 
-  // Filter events based on criteria
+  // Enhanced search: fuzzy match for typos (very basic, for "doctor" vs "docroe")
+  const fuzzyIncludes = (text, term) => {
+    if (!text || !term) return false;
+    text = text.toLowerCase();
+    term = term.toLowerCase();
+    // Simple: allow 1 character mismatch or transposition
+    if (text.includes(term)) return true;
+    if (term.length > 3) {
+      let mismatches = 0;
+      let i = 0, j = 0;
+      while (i < text.length && j < term.length) {
+        if (text[i] === term[j]) {
+          i++; j++;
+        } else {
+          mismatches++;
+          if (mismatches > 1) break;
+          if (text[i + 1] === term[j] && text[i] === term[j + 1]) {
+            // transposition
+            i += 2; j += 2;
+          } else {
+            i++; j++;
+          }
+        }
+      }
+      if (mismatches <= 1) return true;
+    }
+    return false;
+  };
+
+  // Filter events based on criteria (replace .includes with fuzzyIncludes)
   const filterEvents = (events, term, dateFilter) => {
     return events.filter(event => {
-      // Match search term - make case insensitive search more robust
       const searchTermLower = term ? term.toLowerCase() : '';
       const titleLower = event.title ? event.title.toLowerCase() : '';
       const descriptionLower = event.description ? event.description.toLowerCase() : '';
       const locationLower = event.location ? event.location.toLowerCase() : '';
-      
-      const matchesTerm = !searchTermLower || 
-        titleLower.includes(searchTermLower) || 
-        descriptionLower.includes(searchTermLower) ||
-        locationLower.includes(searchTermLower);
-      
+
+      const matchesTerm = !searchTermLower ||
+        fuzzyIncludes(titleLower, searchTermLower) ||
+        fuzzyIncludes(descriptionLower, searchTermLower) ||
+        fuzzyIncludes(locationLower, searchTermLower);
+
       // Match date filter
       let matchesDate = true;
       const eventDate = parseISO(event.date);
@@ -156,6 +184,14 @@ const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
     { label: 'This Week', value: 'week', icon: <Calendar size={16} /> },
     { label: 'This Month', value: 'month', icon: <Calendar size={16} /> },
   ];
+
+  // Helper to check if event is static (from events.json)
+  const isStaticEvent = (event) => {
+    return (
+      typeof event.id === 'string' &&
+      /^[0-9]+$/.test(event.id)
+    );
+  };
 
   return (
     <div className="w-full relative">
@@ -264,7 +300,14 @@ const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
                             className="flex items-center justify-between p-2 rounded-md border border-gray-100 dark:border-gray-700 
                               bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-750 
                               hover:from-gray-100 hover:to-gray-50 dark:hover:from-gray-750 dark:hover:to-gray-700 
-                              transition-colors"
+                              transition-colors cursor-pointer"
+                            onClick={() => {
+                              if (onNavigateDate) {
+                                onNavigateDate(parseISO(event.date));
+                                setShowResults(false);
+                              }
+                            }}
+                            title="Go to this date in calendar"
                           >
                             <div className="flex items-center gap-3 flex-1 min-w-0">
                               <div className={`w-3 h-10 rounded-l-sm bg-${event.color || 'blue'}-500`}></div>
@@ -287,7 +330,8 @@ const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
                             </div>
                             <div className="flex space-x-1 ml-2">
                               <button
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   onEdit && onEdit(event);
                                   setShowResults(false);
                                 }}
@@ -299,12 +343,18 @@ const EventSearch = ({ onSearch, events = [], onEdit, onDelete }) => {
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (confirm(`Delete event "${event.title}"?`)) {
+                                  if (isStaticEvent(event)) {
+                                    alert("This is a static event. You can't delete it here. If you wish to delete it, please remove it from your events.json file.");
+                                    return;
+                                  }
+                                  if (window.confirm(`Delete event "${event.title}"?`)) {
                                     onDelete && onDelete(event.id);
                                   }
                                 }}
-                                className="p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400"
+                                className={`p-1.5 rounded-full hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 dark:text-red-400 ${isStaticEvent(event) ? 'opacity-50 cursor-not-allowed' : ''}`}
                                 aria-label="Delete event"
+                                disabled={isStaticEvent(event)}
+                                title={isStaticEvent(event) ? "This is a static event. You can't delete it here. If you wish to delete it, please remove it from your events.json file." : "Delete event"}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>

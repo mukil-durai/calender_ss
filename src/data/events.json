@@ -1,0 +1,58 @@
+[
+  {
+    "id": "1",
+    "title": "Doctor Appointment",
+    "date": "2025-06-28",
+    "startTime": "10:00",
+    "endTime": "10:30",
+    "color": "yellow"
+  },
+  {
+    "id": "2",
+    "title": "Project Presentation",
+    "date": "2025-06-28",
+    "startTime": "10:15",
+    "endTime": "11:15",
+    "color": "blue"
+  },
+  {
+    "id": "3",
+    "title": "Kerala State Budget Announcement",
+    "date": "2025-06-29",
+    "startTime": "09:00",
+    "endTime": "10:00",
+    "color": "green"
+  },
+  {
+    "id": "4",
+    "title": "Official Meeting with Collector",
+    "date": "2025-06-29",
+    "startTime": "11:00",
+    "endTime": "12:00",
+    "color": "red"
+  },
+  {
+    "id": "5",
+    "title": "Public Health Awareness Seminar",
+    "date": "2025-06-30",
+    "startTime": "14:00",
+    "endTime": "16:00",
+    "color": "purple"
+  },
+  {
+    "id": "6",
+    "title": "District Education Review",
+    "date": "2025-07-01",
+    "startTime": "10:00",
+    "endTime": "12:00",
+    "color": "indigo"
+  },
+  {
+    "id": "7",
+    "title": "Official Inspection: City Hospital",
+    "date": "2025-07-02",
+    "startTime": "09:30",
+    "endTime": "11:00",
+    "color": "pink"
+  }
+]

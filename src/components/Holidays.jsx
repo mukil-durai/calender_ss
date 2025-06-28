@@ -1,56 +1,88 @@
 import React, { useState } from 'react';
-import { format, addDays } from 'date-fns';
-import { getUpcomingHolidaysCount, keralaHolidays, getHolidayClasses } from '../data/holidays';
+import { format, addDays, isAfter, parseISO } from 'date-fns';
+import { keralaHolidays } from '../data/holidays';
 
-const Holidays = ({ currentDate }) => {
+// Helper: filter events that are holidays
+const isHolidayEvent = (event) => {
+  const title = event.title?.toLowerCase() || '';
+  const category = event.category?.toLowerCase() || '';
+  const type = event.type?.toLowerCase() || '';
+  return (
+    title.includes('holiday') ||
+    category.includes('holiday') ||
+    type.includes('holiday')
+  );
+};
+
+const Holidays = ({ currentDate, events }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const upcomingHolidays = getUpcomingHolidaysCount(currentDate);
-  
-  // Get next 5 upcoming holidays
-  const nextHolidays = [...keralaHolidays]
-    .filter(holiday => new Date(holiday.date) >= new Date())
-    .sort((a, b) => new Date(a.date) - new Date(b.date))
-    .slice(0, 5);
-  
-  // Find next Sunday
-  let nextSunday = new Date();
-  while (nextSunday.getDay() !== 0) {
-    nextSunday = addDays(nextSunday, 1);
-  }
+
+  // Get all upcoming holidays from holidays.js
+  const today = new Date();
+  const upcomingKeralaHolidays = keralaHolidays
+    .filter(h => isAfter(parseISO(h.date), addDays(today, -1)))
+    .map(h => ({
+      id: h.date + '-kerala',
+      title: h.name,
+      date: h.date,
+      description: h.description,
+      type: h.type || 'Holiday',
+      source: 'kerala'
+    }));
+
+  // Get all upcoming events from events.json that are holidays
+  const upcomingEventHolidays = events
+    .filter(ev => isHolidayEvent(ev) && isAfter(parseISO(ev.date), addDays(today, -1)))
+    .map(ev => ({
+      id: ev.id || ev.date + '-event',
+      title: ev.title,
+      date: ev.date,
+      description: ev.description,
+      type: ev.type || 'Holiday',
+      source: 'event'
+    }));
+
+  // Merge and sort
+  const allUpcomingHolidays = [...upcomingKeralaHolidays, ...upcomingEventHolidays]
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+  // Next 5 upcoming holidays
+  const nextHolidays = allUpcomingHolidays.slice(0, 5);
 
   // Holiday card component
-  const HolidayCard = ({ holiday }) => {
-    const classes = getHolidayClasses(holiday.type);
-    
-    return (
-      <div className={`${classes.bg} p-2 rounded border-l-3 ${classes.border}`}>
-        <div className="flex justify-between">
-          <div className="truncate flex-1">
-            <div className={`font-medium ${classes.text} truncate flex items-center`}>
-              <span className="mr-1">{classes.icon}</span>
-              {holiday.name}
-            </div>
-            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{holiday.type}</div>
+  const HolidayCard = ({ holiday }) => (
+    <div className="bg-gradient-to-r from-yellow-50 to-green-50 dark:from-yellow-900/20 dark:to-green-900/10 p-2 rounded border-l-4 border-yellow-400 shadow-sm mb-2">
+      <div className="flex justify-between items-center">
+        <div className="truncate flex-1">
+          <div className="font-medium text-yellow-800 dark:text-yellow-200 flex items-center gap-1">
+            <span role="img" aria-label="holiday">🎉</span>
+            {holiday.title}
+            {holiday.source === 'event' && (
+              <span className="ml-1 text-xs text-blue-500">(Event)</span>
+            )}
           </div>
-          <span className={`text-xs ${classes.bg} ${classes.text} px-2 py-0.5 rounded-full whitespace-nowrap ml-2`}>
-            {format(new Date(holiday.date), 'MMM d')}
-          </span>
+          {holiday.description && (
+            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">{holiday.description}</div>
+          )}
         </div>
+        <span className="text-xs bg-yellow-100 dark:bg-yellow-800 text-yellow-700 dark:text-yellow-200 px-2 py-0.5 rounded-full ml-2 font-semibold">
+          {format(parseISO(holiday.date), 'MMM d')}
+        </span>
       </div>
-    );
-  };
+    </div>
+  );
 
   return (
     <div className="fixed bottom-4 left-4 z-10">
       <div className="relative">
         <button 
           onClick={() => setIsExpanded(!isExpanded)} 
-          className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-3 py-2 rounded-full shadow-md border dark:border-gray-700"
+          className="flex items-center space-x-2 bg-white dark:bg-gray-800 px-3 py-2 rounded-full shadow-md border dark:border-gray-700 hover:bg-yellow-50 dark:hover:bg-yellow-900/10 transition"
           title="Upcoming holidays"
         >
           <span className="text-lg">🎉</span>
           <span className="font-medium hidden sm:inline">Holidays</span>
-          <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">{upcomingHolidays.total}</span>
+          <span className="bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full">{allUpcomingHolidays.length}</span>
         </button>
         
         {isExpanded && (
@@ -63,33 +95,19 @@ const Holidays = ({ currentDate }) => {
                 </svg>
               </button>
             </h3>
-            
             <div className="text-sm mb-3 font-medium dark:text-gray-300">
-              <span className="font-semibold">{upcomingHolidays.total} holidays</span> in next 30 days
+              <span className="font-semibold">{allUpcomingHolidays.length} holidays</span> upcoming
             </div>
-            
             <div className="space-y-2 max-h-60 overflow-y-auto">
-              {/* Next Sunday */}
-              <div className="bg-red-50 dark:bg-red-900/30 p-2 rounded border-l-3 border-red-500">
-                <div className="flex justify-between">
-                  <div className="flex items-center">
-                    <span className="mr-1">🌞</span>
-                    <span className="font-medium text-red-700 dark:text-red-300">Sunday</span>
-                  </div>
-                  <span className="text-xs bg-red-100 dark:bg-red-800 text-red-700 dark:text-red-300 px-2 py-0.5 rounded-full">
-                    {format(nextSunday, 'MMM d')}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Next holidays */}
+              {nextHolidays.length === 0 && (
+                <div className="text-gray-400 text-center py-4">No upcoming holidays</div>
+              )}
               {nextHolidays.map(holiday => (
-                <HolidayCard key={holiday.date} holiday={holiday} />
+                <HolidayCard key={holiday.id} holiday={holiday} />
               ))}
             </div>
-            
             <div className="mt-2 pt-2 border-t dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
-              Based on Kerala Government calendar
+              Kerala Gazette + Your Events
             </div>
           </div>
         )}
